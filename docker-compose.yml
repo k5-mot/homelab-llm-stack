@@ -1,30 +1,31 @@
-name: homelab-llm-stack
+name: ${HOMELAB_NAME}-llm-stack
 
 services:
 
-  nginx:
-    image: docker.io/nginx:1.27.1
-    container_name: homelab-nginx
-    restart: always
-    ports:
-      - 80:80
-      - 443:443
-    env_file:
-      - ../base.env
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    networks:
-      - network-reverse-proxy
+  # nginx:
+  #   image: docker.io/nginx:1.27.1
+  #   container_name: ${HOMELAB_NAME}-nginx
+  #   restart: always
+  #   ports:
+  #     - 80:80
+  #     - 443:443
+  #   env_file:
+  #     - ../base.env
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #   networks:
+  #     - network-reverse-proxy
 
   # https://github.com/ollama/ollama/blob/main/docs/docker.md
   ollama:
     build:
       context: ./ollama
       dockerfile: ./Dockerfile
-    container_name: homelab-ollama
+      args:
+        - HTTP_PROXY=${PROXY_ADDRESS}
+        - HTTPS_PROXY=${PROXY_ADDRESS}
+    container_name: ${HOMELAB_NAME}-ollama
     restart: unless-stopped
-    env_file:
-      - ../base.env
     volumes:
       - volume-ollama:/root/.ollama
       - volume-ollama-build:/workspace
@@ -42,7 +43,7 @@ services:
   # https://github.com/Unstructured-IO/unstructured-api
   unstructured:
     image: downloads.unstructured.io/unstructured-io/unstructured-api:latest
-    container_name: homelab-unstructured
+    container_name: ${HOMELAB_NAME}-unstructured
     restart: unless-stopped
     environment:
       - PORT=9500
@@ -53,10 +54,11 @@ services:
     build:
       context: ./crontab
       dockerfile: ./Dockerfile
-    container_name: homelab-crontab
+      args:
+        - HTTP_PROXY=${PROXY_ADDRESS}
+        - HTTPS_PROXY=${PROXY_ADDRESS}
+    container_name: ${HOMELAB_NAME}-crontab
     restart: always
-    env_file:
-      - ../base.env
     volumes:
       - ./docs:/docs:ro
       - ./:/workspaces:cached
@@ -67,12 +69,13 @@ services:
     build:
       context: ./langserve
       dockerfile: ./Dockerfile
-    container_name: homelab-langserve
+      args:
+        - HTTP_PROXY=${PROXY_ADDRESS}
+        - HTTPS_PROXY=${PROXY_ADDRESS}
+    container_name: ${HOMELAB_NAME}-langserve
     restart: always
     ports:
       - 31000:8000
-    env_file:
-      - ../base.env
     volumes:
       - ./docs:/docs:ro
     networks:
@@ -83,14 +86,17 @@ services:
     build:
       context: ./chainlit
       dockerfile: ./Dockerfile
-    container_name: homelab-chainlit
+      args:
+        - HTTP_PROXY=${PROXY_ADDRESS}
+        - HTTPS_PROXY=${PROXY_ADDRESS}
+    container_name: ${HOMELAB_NAME}-chainlit
     restart: always
     environment:
-      - OAUTH_GITLAB_CLIENT_ID=""
-      - OAUTH_GITLAB_CLIENT_SECRET=""
-      - OAUTH_GITLAB_DOMAIN=""
-    env_file:
-      - ../base.env
+      # - OAUTH_GITLAB_CLIENT_ID=""
+      # - OAUTH_GITLAB_CLIENT_SECRET=""
+      # - OAUTH_GITLAB_DOMAIN=""
+      - HTTP_PROXY=${PROXY_ADDRESS}
+      - HTTPS_PROXY=${PROXY_ADDRESS}
     volumes:
       - ./docs:/docs:ro
     networks:
@@ -98,7 +104,7 @@ services:
 
   chroma:
     image: chromadb/chroma:0.5.11
-    container_name: homelab-chroma
+    container_name: ${HOMELAB_NAME}-chroma
     restart: always
     environment:
       - IS_PERSISTENT=TRUE
@@ -111,7 +117,7 @@ services:
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.12.1
-    container_name: homelab-elasticsearch
+    container_name: ${HOMELAB_NAME}-elasticsearch
     restart: always
     shm_size: 1g
     environment:
@@ -124,42 +130,24 @@ services:
     networks:
       - network-reverse-proxy
 
-  # https://docs.gitlab.com/ee/install/docker.html
-  gitlab:
-    image: docker.io/gitlab/gitlab-ee:16.10.10-ee.0
-    # image: docker.io/gitlab/gitlab-ee:17.4.1-ee.0
-    container_name: homelab-gitlab
-    restart: always
-    shm_size: 256m
-    ports:
-      - 30022:22
-    env_file:
-      - ../base.env
-    environment:
-      GITLAB_OMNIBUS_CONFIG: |
-        external_url 'http://localhost/gitlab'
-        gitlab_rails['time_zone'] = 'Tokyo'
-        gitlab_rails['gitlab_shell_ssh_port'] = 30022
-    volumes:
-      - /srv/gitlab/config:/etc/gitlab
-      - /srv/gitlab/logs:/var/log/gitlab
-      - /srv/gitlab/data:/var/opt/gitlab
-    networks:
-      - network-reverse-proxy
-
   jupyterhub:
     build:
       context: ./jupyterhub
       dockerfile: ./Dockerfile
-    container_name: homelab-jupyterhub
+      args:
+        - HTTP_PROXY=${PROXY_ADDRESS}
+        - HTTPS_PROXY=${PROXY_ADDRESS}
+    container_name: ${HOMELAB_NAME}-jupyterhub
     restart: unless-stopped
     env_file:
       - ../base.env
     environment:
-      - GITLAB_HOST=${GITLAB_HOST}
-      - OAUTH_CALLBACK_URL=${OAUTH_CALLBACK_URL}
-      - GITLAB_CLIENT_ID=${GITLAB_CLIENT_ID}
-      - GITLAB_CLIENT_SECRET=${GITLAB_CLIENT_SECRET}
+      # - GITLAB_HOST=${GITLAB_HOST}
+      # - OAUTH_CALLBACK_URL=${OAUTH_CALLBACK_URL}
+      # - GITLAB_CLIENT_ID=${GITLAB_CLIENT_ID}
+      # - GITLAB_CLIENT_SECRET=${GITLAB_CLIENT_SECRET}
+      - HTTP_PROXY=${PROXY_ADDRESS}
+      - HTTPS_PROXY=${PROXY_ADDRESS}
     networks:
       - network-reverse-proxy
     deploy:
@@ -171,7 +159,7 @@ services:
               capabilities: [ gpu ]
   # nni:
   #   image: docker.io/msranni/nni:latest
-  #   container_name: homelab-nni
+  #   container_name: ${HOMELAB_NAME}-nni
   #   restart: unless-stopped
   #   env_file:
   #     - ../base.env
@@ -180,7 +168,7 @@ services:
   # https://docs.langflow.org/deployment-docker
   # langflow:
   #   image: docker.io/langflowai/langflow:latest
-  #   container_name: homelab-langflow
+  #   container_name: ${HOMELAB_NAME}-langflow
   #   restart: unless-stopped
   #   ports:
   #     - 30111:7860
@@ -198,7 +186,7 @@ services:
 
   # langflow-db:
   #   image: docker.io/postgres:16
-  #   container_name: homelab-langflow-db
+  #   container_name: ${HOMELAB_NAME}-langflow-db
   #   restart: unless-stopped
   #   env_file:
   #     - ../base.env
@@ -219,23 +207,23 @@ services:
 
 networks:
   network-reverse-proxy:
-    name: homelab-network-reverse-proxy
-    # external: true
+    name: ${HOMELAB_NAME}-network-reverse-proxy
+    external: true
   network-ollama:
-    name: homelab-network-ollama
+    name: ${HOMELAB_NAME}-network-ollama
   network-langflow:
-    name: homelab-network-langflow
+    name: ${HOMELAB_NAME}-network-langflow
 
 volumes:
   volume-ollama:
-    name: homelab-volume-ollama
+    name: ${HOMELAB_NAME}-volume-ollama
   volume-ollama-build:
-    name: homelab-volume-ollama-build
+    name: ${HOMELAB_NAME}-volume-ollama-build
   volume-langflow:
-    name: homelab-volume-langflow
+    name: ${HOMELAB_NAME}-volume-langflow
   volume-langflow-db:
-    name: homelab-volume-langflow-db
+    name: ${HOMELAB_NAME}-volume-langflow-db
   volume-chroma:
-    name: homelab-volume-chroma
+    name: ${HOMELAB_NAME}-volume-chroma
   volume-elasticsearch:
-    name: homelab-volume-elasticsearch
+    name: ${HOMELAB_NAME}-volume-elasticsearch

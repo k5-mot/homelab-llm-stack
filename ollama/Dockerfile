@@ -1,5 +1,8 @@
 FROM docker.io/ollama/ollama:latest
 ENV OLLAMA_HOST=0.0.0.0
+ARG HTTP_PROXY=
+ARG HTTPS_PROXY=
+
 WORKDIR /workspace
 COPY ./ /workspace/
 
