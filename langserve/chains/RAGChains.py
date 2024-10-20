@@ -77,7 +77,7 @@ def format_docs_chainlit(docs: List[Document]) -> List[Dict[str, str]]:
         # Add context to element
         if exist_context is None:
             # Create new element
-            content = "- Score: {}\n{}".format(
+            content = "- Score: {}\n\n{}".format(
                 str(doc.metadata["relevance_score"]), doc.page_content
             )
             contexts.append(
@@ -87,7 +87,7 @@ def format_docs_chainlit(docs: List[Document]) -> List[Dict[str, str]]:
                 }
             )
         else:
-            content = "\n- - - - - -\n- Score: {}\n{}".format(
+            content = "\n- - - - - -\n- Score: {}\n\n{}".format(
                 str(doc.metadata["relevance_score"]), doc.page_content
             )
             exist_context["content"] += content
