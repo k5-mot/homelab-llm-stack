@@ -4,10 +4,8 @@ import os
 import re
 import statistics
 from typing import List
-
 import chromadb
 from elasticsearch import Elasticsearch
-
 from langchain.text_splitter import (
     HTMLHeaderTextSplitter,
     MarkdownHeaderTextSplitter,
@@ -15,16 +13,26 @@ from langchain.text_splitter import (
     SpacyTextSplitter,
 )
 from langchain_community.document_loaders import (  # UnstructuredAPIFileLoader,
-    PyMuPDFLoader,
     PyPDFLoader,
     TextLoader,
     UnstructuredPDFLoader,
+    PDFPlumberLoader,
+    PyPDFium2Loader,
+    PDFMinerLoader,
+    Docx2txtLoader,
+    UnstructuredWordDocumentLoader,
+    UnstructuredPowerPointLoader,
+    UnstructuredExcelLoader,
 )
 from langchain_core.documents import Document
 from langchain_chroma import Chroma
 from langchain_unstructured import UnstructuredLoader
 from langchain_ollama import OllamaEmbeddings
 from langchain_elasticsearch import ElasticsearchStore
+from langchain.globals import set_debug, set_verbose
+
+set_debug(False)
+set_verbose(False)
 
 OLLAMA_API_URL = "http://homelab-ollama:11434"
 CHROMA_API_URL = "http://homelab-chroma:8000"
@@ -93,7 +101,9 @@ def load_and_split_pdf(file_path: str) -> List[Document]:
 
     # Load PDF as Document
     loaders = [
-        PyMuPDFLoader(file_path=file_path),
+        PDFPlumberLoader(file_path=file_path),
+        PyPDFium2Loader(file_path=file_path),
+        PDFMinerLoader(file_path=file_path),
         PyPDFLoader(file_path=file_path),
         UnstructuredPDFLoader(
             file_path=file_path,
@@ -113,7 +123,132 @@ def load_and_split_pdf(file_path: str) -> List[Document]:
             break
 
     # Split Document
-    text_splitter = SpacyTextSplitter(chunk_size=500, pipeline="ja_core_news_lg")
+    # text_splitter = SpacyTextSplitter(chunk_size=500, pipeline="ja_core_news_lg")
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=20,
+        length_function=len,
+        is_separator_regex=False,
+        separators=SEPARATORS,
+    )
+    splitted_doc = text_splitter.split_documents(doc)
+    return splitted_doc
+
+
+def load_and_split_word(file_path: str) -> List[Document]:
+    ext = os.path.splitext(file_path)[1]
+    if ext not in [".docx", ".docm", ".doc", "dot"]:
+        return []
+
+    # Load PDF as Document
+    loaders = [
+        Docx2txtLoader(file_path=file_path, mode="elements"),
+        UnstructuredWordDocumentLoader(
+            file_path=file_path,
+            max_characters=1000000,
+            partition_via_api=True,
+            url=UNSTRUCTURED_API_URL,
+            api_key=UNSTRUCTURED_API_KEY,
+            mode="elements",
+        ),
+    ]
+
+    for loader in loaders:
+        try:
+            doc = loader.load()
+        except Exception as ex:
+            print(f"Error loading {file_path}: {ex}")
+            continue
+        else:
+            break
+
+    # Split Document
+    # text_splitter = SpacyTextSplitter(chunk_size=500, pipeline="ja_core_news_lg")
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=20,
+        length_function=len,
+        is_separator_regex=False,
+        separators=SEPARATORS,
+    )
+    splitted_doc = text_splitter.split_documents(doc)
+    return splitted_doc
+
+
+def load_and_split_powerpoint(file_path: str) -> List[Document]:
+    ext = os.path.splitext(file_path)[1]
+    if ext not in [".pptx", ".pptm"]:
+        return []
+
+    # Load PDF as Document
+    loaders = [
+        UnstructuredPowerPointLoader(
+            file_path=file_path,
+            max_characters=1000000,
+            partition_via_api=True,
+            url=UNSTRUCTURED_API_URL,
+            api_key=UNSTRUCTURED_API_KEY,
+            mode="elements",
+        ),
+    ]
+
+    for loader in loaders:
+        try:
+            doc = loader.load()
+        except Exception as ex:
+            print(f"Error loading {file_path}: {ex}")
+            continue
+        else:
+            break
+
+    # Split Document
+    # text_splitter = SpacyTextSplitter(chunk_size=500, pipeline="ja_core_news_lg")
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=20,
+        length_function=len,
+        is_separator_regex=False,
+        separators=SEPARATORS,
+    )
+    splitted_doc = text_splitter.split_documents(doc)
+    return splitted_doc
+
+
+def load_and_split_excel(file_path: str) -> List[Document]:
+    ext = os.path.splitext(file_path)[1]
+    if ext not in [".xls", ".xlsx", ".xlsm"]:
+        return []
+
+    # Load PDF as Document
+    loaders = [
+        UnstructuredExcelLoader(
+            file_path=file_path,
+            max_characters=1000000,
+            partition_via_api=True,
+            url=UNSTRUCTURED_API_URL,
+            api_key=UNSTRUCTURED_API_KEY,
+            mode="elements",
+        ),
+    ]
+
+    for loader in loaders:
+        try:
+            doc = loader.load()
+        except Exception as ex:
+            print(f"Error loading {file_path}: {ex}")
+            continue
+        else:
+            break
+
+    # Split Document
+    # text_splitter = SpacyTextSplitter(chunk_size=500, pipeline="ja_core_news_lg")
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=20,
+        length_function=len,
+        is_separator_regex=False,
+        separators=SEPARATORS,
+    )
     splitted_doc = text_splitter.split_documents(doc)
     return splitted_doc
 
@@ -251,6 +386,12 @@ def load_and_split_all(dir_path: str = "/workspace/docs") -> List[Document]:
             doc = load_and_split_markdown(file_path)
         elif ext == ".html":
             doc = load_and_split_html(file_path)
+        elif ext not in [".docx", ".docm", ".doc", "dot"]:
+            doc = load_and_split_word(file_path)
+        elif ext not in [".pptx", ".pptm"]:
+            doc = load_and_split_powerpoint(file_path)
+        elif ext not in [".xls", ".xlsx", ".xlsm"]:
+            doc = load_and_split_excel(file_path)
         else:
             doc = load_and_split_unknown(file_path)
 
@@ -317,6 +458,8 @@ for rootdir in glob.glob("/docs/*/"):
 
     # Documents loader
     documents = load_and_split_all(rootdir)
+    eval_documents(documents)
+    save_documents(documents)
 
     # Vector store
     vectorstore = Chroma(
@@ -332,16 +475,6 @@ for rootdir in glob.glob("/docs/*/"):
         es_url=ELASTICSEARCH_API_URL,
         index_name=collection_name,
         embedding=embeddings,
-        # es_user="elastic",
-        # es_password="changeme",
     )
     elasticsearch.add_documents(documents)
     print(f"\033[31m# Add Collection: {collection_name} on Elasticsearch\033[0m")
-
-
-# document_1 = Document(
-#     page_content="I had chocolate chip pancakes and scrambled eggs for breakfast this morning.",
-#     metadata={"source": "tweet"},
-#     id=1,
-# )
-# vectorstore.add_documents(documents=[document_1])

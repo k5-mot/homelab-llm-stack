@@ -14,6 +14,7 @@ LANGSERVE_LIST_URL = f"{LANGSERVE_BASE_URL}/list"
 response = requests.get(LANGSERVE_LIST_URL).json()
 chains = response["chains"]
 for chain in chains:
+    print(chain["path"])
     chain["runnable"] = RemoteRunnable(url=f"{LANGSERVE_BASE_URL}/{chain["path"]}")
 
 

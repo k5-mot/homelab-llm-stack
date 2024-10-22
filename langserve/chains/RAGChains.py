@@ -186,9 +186,10 @@ def get_rag_chain(collection_name: str) -> Dict[str, Runnable | Dict[str, Any]]:
         r"[ :\.\-/]", "_", f"{provider}_{BASE_MODEL_NAME}_rag_{docs_dir}"
     ).lower()
     content = ""
-    with open(f"{docs_dir}/CONTENT.txt", encoding="utf-8") as f:
-        for line in f.readlines():
-            content += line + "\n"
+    if os.path.isfile(f"{docs_dir}/CONTENT.txt"):
+        with open(f"{docs_dir}/CONTENT.txt", encoding="utf-8") as f:
+            for line in f.readlines():
+                content += line + "\n"
 
     metadata = {
         "title": f"RAG - {docs_dir}",

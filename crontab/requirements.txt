@@ -5,16 +5,21 @@ langchain-text-splitters
 langchain-anthropic
 langchain-openai
 langchain-chroma
-chromadb
 langchain-ollama
-ollama
 langchain-elasticsearch
 langchain-unstructured
-unstructured
-PyMuPDF
-spacy
-python-magic
 flashrank
+chromadb
+ollama
+unstructured-client
+unstructured
+# python-magic
+# python-pptx
+# openpyxl
+spacy
+pypdf
+pdfplumber
+docx2txt
 chainlit
 black
 flake8
