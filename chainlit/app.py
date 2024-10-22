@@ -4,7 +4,7 @@ import chainlit as cl
 from langchain_core.documents import Document
 
 from langserve import RemoteRunnable
-from langchain_core.runnables import Runnable
+from langchain_core.runnables import Runnable, RunnableConfig
 
 
 # Get LangServe API list
@@ -71,7 +71,9 @@ async def on_message(message: cl.Message):
     contexts = []
     for chunk in runnable.stream(
         input={"question": message.content},
-        # config=RunnableConfig(callbacks=[cl.LangchainCallbackHandler()]),
+        config=RunnableConfig(
+            callbacks=[cl.LangchainCallbackHandler(stream_final_answer=True)]
+        ),
     ):
         if "answer" in chunk.keys():
             await reply.stream_token(chunk["answer"])
