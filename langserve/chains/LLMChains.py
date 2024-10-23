@@ -13,7 +13,7 @@ from langchain_core.runnables import (
     RunnableConfig,
 )
 from langchain_ollama.chat_models import ChatOllama
-from langchain_openai import AzureOpenAI
+from langchain_openai import AzureChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
 
 
@@ -86,17 +86,20 @@ def get_azure_openai_chains() -> List[Dict[str, Runnable | Dict[str, Any]]]:
     """Get simple LLM chains from Azure OpenAI."""
 
     model_names = ["gpt-3"]
+    chains = []
     for model_name in model_names:
-
         # Create basic components
         human_prompt = HumanMessagePromptTemplate.from_template(HUMAN_TEMPLATE)
         prompt = ChatPromptTemplate.from_messages([human_prompt])
-        llm = AzureOpenAI(
-            name=model_name,
+        llm = AzureChatOpenAI(
             azure_endpoint=AZURE_OPENAI_ENDPOINT,
             api_key=AZURE_OPENAI_API_KEY,
+            azure_deployment=model_name,
             api_version=AZURE_OPENAI_API_VERSION,
-            # temperature=1.0,
+            temperature=0.7,
+            max_tokens=None,
+            timeout=None,
+            max_retries=2,
         )
         parser = StrOutputParser()
 
